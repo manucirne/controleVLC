@@ -166,14 +166,17 @@ void play_pause(void)
 void send(){
 	if(flagPP){
 		str = 'p';
+		flagPP = 0;
 	}
 	if (flagVmais){
 		str = 'u';
+		flagVmais = 0;
 	}
 	if (flagVmenos){
 		str = 'd';
+		flagVmenos = 0;
 	}
-	usart_put_string(USART1 ,str, strlen(str));
+	//usart_put_string(USART1 ,str, strlen(str));
 	but_flag = 1;
 }
 /************************************************************************/
