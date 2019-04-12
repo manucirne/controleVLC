@@ -73,7 +73,7 @@ void SysTick_Handler() {
 // funções para funcionamento do bluetooth
 void config_console(void) {
 	usart_serial_options_t config;
-	config.baudrate = 9600;
+	config.baudrate = 115200;
 	config.charlength = US_MR_CHRL_8_BIT;
 	config.paritytype = US_MR_PAR_NO;
 	config.stopbits = false;
@@ -151,33 +151,43 @@ int hc05_server_init(void) {
 void vol_mais(void)
 {
   flagVmais = 1;
+  but_flag = 1;
+  str = 'u';
 }
 
 void vol_menos(void)
 {
 	flagVmenos = 1;
+	 but_flag = 1;
+	 str = 'd';
 }
 
 void play_pause(void)
 {
+	//usart_put_string(USART1, "Inicializando...\r\n");
+	str = 'p';
 	flagPP = 1;
+	 but_flag = 1;
 }
 
 void send(){
-	if(flagPP){
+	if (flagPP){
 		str = 'p';
-		flagPP = 0;
+		//usart_put_string(USART1, "Inicializando...\r\n");
+		
 	}
-	if (flagVmais){
+	if ((flagVmais) && (str != 'p')){
 		str = 'u';
-		flagVmais = 0;
-	}
-	if (flagVmenos){
+		
+	} else if ((flagVmenos) && (str != 'p')){
 		str = 'd';
-		flagVmenos = 0;
+		
 	}
-	//usart_put_string(USART1 ,str, strlen(str));
-	but_flag = 1;
+	flagVmenos = 0;
+	flagVmais = 0;
+	flagPP = 0;
+	//usart_put_string(USART1 ,str);
+	//but_flag = 1;
 }
 /************************************************************************/
 /* inicialização                                                             */
@@ -193,46 +203,63 @@ void io_init(void)
 	pmc_enable_periph_clk(LED_PIO_ID);
 	pio_configure(LED_PIO, PIO_OUTPUT_0, LED_IDX_MASK, PIO_DEFAULT );
 
-  // Voluma mais
-	pmc_enable_periph_clk(BUT_PIO_IDVM);
-	pio_configure(BUT_PIOVM, PIO_INPUT, BUT_IDX_MASKVM, PIO_PULLUP);
-  pio_handler_set(BUT_PIO_IDVM,
-                  BUT_PIO_IDVM,
-                  BUT_IDX_MASKVM,
-                  PIO_IT_FALL_EDGE,
-                  vol_mais);
-  pio_enable_interrupt(BUT_PIOVm, BUT_IDX_MASKVM);
-  NVIC_EnableIRQ(BUT_PIO_IDVM);
-  NVIC_SetPriority(BUT_PIO_IDVM, 4);
-  
-  //BOTAO VOLUME MENOS
+    //BOTAO VOLUME MENOS
     pmc_enable_periph_clk(BUT_PIO_IDVm);
     pio_configure(BUT_PIOVm, PIO_INPUT, BUT_IDX_MASKVm, PIO_PULLUP);
-    pio_handler_set(BUT_PIO_IDVm,
-    BUT_PIO_IDVm,
-    BUT_IDX_MASKVm,
-    PIO_IT_FALL_EDGE,
-    vol_menos);
+    
     pio_enable_interrupt(BUT_PIOVm, BUT_IDX_MASKVm);
-    NVIC_EnableIRQ(BUT_PIO_IDVm);
-    NVIC_SetPriority(BUT_PIO_IDVm, 4);
+ 
+	
+	  pio_handler_set(BUT_PIOVm,
+	  BUT_PIO_IDVm,
+	  BUT_IDX_MASKVm,
+	  PIO_IT_FALL_EDGE,
+	  vol_menos);
+  
+      NVIC_EnableIRQ(BUT_PIO_IDVm);
+      NVIC_SetPriority(BUT_PIO_IDVm, 4);
+   
+
+  
+
+	
+	 // Voluma mais
+	 pmc_enable_periph_clk(BUT_PIO_IDVM);
+	 pio_configure(BUT_PIOVM, PIO_INPUT, BUT_IDX_MASKVM, PIO_PULLUP);
+	 pio_enable_interrupt(BUT_PIOVM, BUT_IDX_MASKVM);
+	   pio_handler_set(BUT_PIOVM,
+	   BUT_PIO_IDVM,
+	   BUT_IDX_MASKVM,
+	   PIO_IT_FALL_EDGE,
+	   vol_mais);
+	   
+	   
+	   NVIC_EnableIRQ(BUT_PIO_IDVM);
+	   NVIC_SetPriority(BUT_PIO_IDVM, 4);
+
 	
 	//Botão Play Pause
 	  pmc_enable_periph_clk(BUT_PIO_IDPP);
 	  pio_configure(BUT_PIOPP, PIO_INPUT, BUT_IDX_MASKPP, PIO_PULLUP);
-	  pio_handler_set(BUT_PIO_IDPP,
-	  BUT_PIO_IDPP,
-	  BUT_IDX_MASKPP,
-	  PIO_IT_FALL_EDGE,
-	  play_pause);
+	  
 
 	  // Ativa interrupção
 	  pio_enable_interrupt(BUT_PIOPP, BUT_IDX_MASKPP);
 
+  
+
+
+  pio_handler_set(BUT_PIOPP,
+  BUT_PIO_IDPP,
+  BUT_IDX_MASKPP,
+  PIO_IT_FALL_EDGE,
+  play_pause);
+  
 	  // Configura NVIC para receber interrupcoes do PIO do botao
 	  // com prioridade 4 (quanto mais próximo de 0 maior)
 	  NVIC_EnableIRQ(BUT_PIO_IDPP);
-	  NVIC_SetPriority(BUT_PIO_IDPP, 0);
+	  NVIC_SetPriority(BUT_PIO_IDPP, 4);
+	
 }
 
 /************************************************************************/
@@ -249,10 +276,11 @@ void main(void)
 	WDT->WDT_MR = WDT_MR_WDDIS;
 
   // configura botao com interrupcao
+
+  sysclk_init();
+  board_init();
   io_init();
   
-  board_init();
-  sysclk_init();
   delay_init();
   SysTick_Config(sysclk_get_cpu_hz() / 1000); // 1 ms
   config_console();
@@ -265,23 +293,39 @@ void main(void)
   hc05_server_init();
   #endif
   char eof = 'X';
-  char buffer[1024];
-
+  char buffer[128];
+  char buffer_rx[128];
+  //str='3';
+  flagPP = 0;
+  flagVmais = 0;
+  flagVmenos = 0;
+  but_flag = 0;
 	// super loop
 	// aplicacoes embarcadas no devem sair do while(1).
 	while(1)
   {
-	  send();
+	  //usart_send_command(USART0, buffer, 1000, "Teas", 1000);
+	  
 	  // trata interrupção do botão
-	  if(but_flag){
-		  while(!usart_is_tx_ready(UART_COMM));
-		  usart_write(UART_COMM, str);
-		  while(!usart_is_tx_ready(UART_COMM));
-		  usart_write(UART_COMM, eof);
-		  but_flag = false;
+	  if(but_flag == 1){
+		  //send();
+		  while(!usart_is_tx_ready(USART0));//UART_COMM));
+		  //usart_put_string(USART1, str);
+		  //usart_write(USART0, str);
+		  buffer[0] = str;
+		  buffer[1] = eof;
+		  buffer[2] = '\0';
+		  usart_send_command(USART0, buffer_rx, 1000, buffer, 1000);
+		  //while(!usart_is_tx_ready(USART0));//UART_COMM));
+		  //usart_put_string(USART1, eof);
+		  
+		  //usart_send_command(USART0, buffer, 1000, eof, 1000);
+		  //flagPP = 0;
+		  //str = 'j';
+		  but_flag = 0;
 	  }
 	  
-	  pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
+	  //pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
 	  
 	}
 }
