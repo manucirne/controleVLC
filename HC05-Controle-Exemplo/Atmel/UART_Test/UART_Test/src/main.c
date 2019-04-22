@@ -57,11 +57,24 @@
 #define BUT_IDXPP  4
 #define BUT_IDX_MASKPP (1 << BUT_IDXPP)
 
+// Botão ON/OFF
+#define BUT_PIOLD      PIOD
+#define BUT_PIO_IDLD   ID_PIOD
+#define BUT_IDXLD  26
+#define BUT_IDX_MASKLD (1 << BUT_IDXLD)
+
+// Botão ON/OFF
+#define LED_PIOLD      PIOD
+#define LED_PIO_IDLD   ID_PIOD
+#define LED_IDXLD  11
+#define LED_IDX_MASKLD (1 << LED_IDXLD)
+
 // flags e variáveis voléteis
 volatile int flagVmais = 0;
 volatile int flagVmenos = 0;
 volatile int flagPP = 0;
 volatile int but_flag = 0;
+volatile int on = 1;
 
 volatile long g_systimer = 0;
 volatile char str;
@@ -150,24 +163,39 @@ int hc05_server_init(void) {
  */
 void vol_mais(void)
 {
-  flagVmais = 1;
-  but_flag = 1;
-  str = 'u';
+	if (on){
+	  flagVmais = 1;
+	  but_flag = 1;
+	  str = 'u';
+	}
 }
 
 void vol_menos(void)
 {
+	if (on){
 	flagVmenos = 1;
 	 but_flag = 1;
 	 str = 'd';
+	}
 }
 
 void play_pause(void)
 {
+	if (on){
 	//usart_put_string(USART1, "Inicializando...\r\n");
 	str = 'p';
 	flagPP = 1;
 	 but_flag = 1;
+	 }
+}
+
+void onoff(void)
+{
+	if (on == 1){
+		on = 0;
+	} else {
+		on = 1;
+	}
 }
 
 void send(){
@@ -202,6 +230,29 @@ void io_init(void)
   // Configura led - testes
 	pmc_enable_periph_clk(LED_PIO_ID);
 	pio_configure(LED_PIO, PIO_OUTPUT_0, LED_IDX_MASK, PIO_DEFAULT );
+	
+	pmc_enable_periph_clk(LED_PIO_IDLD);
+	pio_configure(LED_PIOLD, PIO_OUTPUT_0, LED_IDX_MASKLD, PIO_DEFAULT);
+
+
+	//BOTAO ON OFF
+	pmc_enable_periph_clk(BUT_PIO_IDLD);
+	pio_configure(BUT_PIOLD, PIO_INPUT, BUT_IDX_MASKLD, PIO_PULLUP);
+
+	pio_enable_interrupt(BUT_PIOLD, BUT_IDX_MASKLD);
+
+
+	pio_handler_set(BUT_PIOLD,
+	BUT_PIO_IDLD,
+	BUT_IDX_MASKLD,
+	PIO_IT_FALL_EDGE,
+	onoff);
+
+	NVIC_EnableIRQ(BUT_PIO_IDLD);
+	NVIC_SetPriority(BUT_PIO_IDLD, 0);
+
+
+
 
     //BOTAO VOLUME MENOS
     pmc_enable_periph_clk(BUT_PIO_IDVm);
@@ -303,29 +354,37 @@ void main(void)
 	// super loop
 	// aplicacoes embarcadas no devem sair do while(1).
 	while(1)
-  {
-	  //usart_send_command(USART0, buffer, 1000, "Teas", 1000);
+	{
+		if (on){
+			pio_clear(LED_PIOLD, LED_IDX_MASKLD);
+		
+		  //usart_send_command(USART0, buffer, 1000, "Teas", 1000);
 	  
-	  // trata interrupção do botão
-	  if(but_flag == 1){
-		  //send();
-		  while(!usart_is_tx_ready(USART0));//UART_COMM));
-		  //usart_put_string(USART1, str);
-		  //usart_write(USART0, str);
-		  buffer[0] = str;
-		  buffer[1] = eof;
-		  buffer[2] = '\0';
-		  usart_send_command(USART0, buffer_rx, 1000, buffer, 1000);
-		  //while(!usart_is_tx_ready(USART0));//UART_COMM));
-		  //usart_put_string(USART1, eof);
+		  // trata interrupção do botão
+		  if(but_flag == 1){
+			  //send();
+			  while(!usart_is_tx_ready(USART0));//UART_COMM));
+			  //usart_put_string(USART1, str);
+			  //usart_write(USART0, str);
+			  buffer[0] = str;
+			  buffer[1] = eof;
+			  buffer[2] = '\0';
+			  usart_send_command(USART0, buffer_rx, 1000, buffer, 1000);
+			  //while(!usart_is_tx_ready(USART0));//UART_COMM));
+			  //usart_put_string(USART1, eof);
 		  
-		  //usart_send_command(USART0, buffer, 1000, eof, 1000);
-		  //flagPP = 0;
-		  //str = 'j';
-		  but_flag = 0;
+			  //usart_send_command(USART0, buffer, 1000, eof, 1000);
+			  //flagPP = 0;
+			  //str = 'j';
+			  but_flag = 0;
+		  }
+		} else{
+		  pio_set(LED_PIOLD, LED_IDX_MASKLD);
+		  //pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
 	  }
 	  
-	  //pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
+		  //pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
 	  
+		
 	}
 }
