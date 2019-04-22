@@ -39,6 +39,12 @@
 #define LED_IDX      8
 #define LED_IDX_MASK (1 << LED_IDX)
 
+// vibra
+#define VIB_PIO      PIOC
+#define VIB_PIO_ID   ID_PIOC
+#define VIB_IDX      13
+#define VIB_IDX_MASK (1 << VIB_IDX)
+
 // Botão volume menos
 #define BUT_PIOVm      PIOA
 #define BUT_PIO_IDVm   ID_PIOA
@@ -154,6 +160,12 @@ int hc05_server_init(void) {
 }
 
 
+void vibra(void){
+	pio_set(VIB_PIO, VIB_IDX_MASK);
+	delay_ms(100);
+	pio_clear(VIB_PIO, VIB_IDX_MASK);
+}
+
 /************************************************************************/
 /* handler / callbacks                                                  */
 /************************************************************************/
@@ -167,7 +179,10 @@ void vol_mais(void)
 	  flagVmais = 1;
 	  but_flag = 1;
 	  str = 'u';
+	  vibra();
 	}
+	//pio_set(VIB_PIO, VIB_IDX_MASK);
+	
 }
 
 void vol_menos(void)
@@ -176,7 +191,9 @@ void vol_menos(void)
 	flagVmenos = 1;
 	 but_flag = 1;
 	 str = 'd';
+	vibra();	 
 	}
+	
 }
 
 void play_pause(void)
@@ -186,7 +203,9 @@ void play_pause(void)
 	str = 'p';
 	flagPP = 1;
 	 but_flag = 1;
+	 vibra();
 	 }
+	 
 }
 
 void onoff(void)
@@ -233,6 +252,9 @@ void io_init(void)
 	
 	pmc_enable_periph_clk(LED_PIO_IDLD);
 	pio_configure(LED_PIOLD, PIO_OUTPUT_0, LED_IDX_MASKLD, PIO_DEFAULT);
+	
+	pmc_enable_periph_clk(VIB_PIO_ID);
+	pio_configure(VIB_PIO, PIO_OUTPUT_0, VIB_IDX_MASK, PIO_DEFAULT );
 
 
 	//BOTAO ON OFF
