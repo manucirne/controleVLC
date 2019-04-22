@@ -292,22 +292,23 @@ void TC2_Handler(void){
 		g_is_conversion_done = false;
 	}
 	afec_start_software_conversion(AFEC0);
-	if(afec_channel_get_value(AFEC0, AFEC_CHANNEL_POT) > 2700){
+	if(afec_channel_get_value(AFEC0, AFEC_CHANNEL_POT) > 3200){
 		flag_foward = true; //não esquecer de dar false nas flags novas no send
-		printf("f");
+		printf("%f", afec_channel_get_value(AFEC0, AFEC_CHANNEL_POT));
 		str = 'f';
-		but_flag = true;  
+		but_flag = 1;  
 	}
-	if((afec_channel_get_value(AFEC0, AFEC_CHANNEL_POT) > 1300) && (afec_channel_get_value(AFEC0, AFEC_CHANNEL_POT) < 2700)){
+	if((afec_channel_get_value(AFEC0, AFEC_CHANNEL_POT) > 1200) && (afec_channel_get_value(AFEC0, AFEC_CHANNEL_POT) < 3200)){
 		flag_neutral = true;  //não esquecer de dar false nas flags novas no send
 		printf("n");
 		str = 'n';
+		but_flag = 1;  
 	}
-	if(afec_channel_get_value(AFEC0, AFEC_CHANNEL_POT) < 1300){
+	if(afec_channel_get_value(AFEC0, AFEC_CHANNEL_POT) < 1200){
 		flag_back = true;  //não esquecer de dar false nas flags novas no send
 		printf("b");
 		str = 'b';
-		but_flag = true;
+		but_flag = 1;
 	}
 	//printf("Teste POT:  %d \n", afec_channel_get_value(AFEC0, AFEC_CHANNEL_POT));
 		
@@ -412,7 +413,7 @@ void vol_mais(void)
 	if (on){
 	  flagVmais = 1;
 	  but_flag = 1;
-	  str = 'u';
+	  //str = 'u';
 	  vibra();
 	}
 	//pio_set`                                                                                                                      
@@ -423,7 +424,7 @@ void vol_menos(void)
 	if (on){
 	flagVmenos = 1;
 	 but_flag = 1;
-	 str = 'd';
+	 //str = 'd';
 	vibra();	 
 	}
 	
@@ -433,7 +434,7 @@ void play_pause(void)
 {
 	if (on){
 	//usart_put_string(USART1, "Inicializando...\r\n");
-	str = 'p';
+	//str = 'p';
 	flagPP = 1;
 	 but_flag = 1;
 	 vibra();
@@ -451,23 +452,30 @@ void onoff(void)
 }
 
 void send(){
+	but_flag = 1;
 	if (flagPP){
 		str = 'p';
 		//usart_put_string(USART1, "Inicializando...\r\n");
 		
 	}
-	if ((flagVmais) && (str != 'p')){
+	else if ((flagVmais)){
 		str = 'u';
 		
-	} else if ((flagVmenos) && (str != 'p')){
+	} else if ((flagVmenos)){
 		str = 'd';
 		                       
 	}
-	else if (flag_foward && (str != 'p')){
+	else if (flag_foward){
 		str = 'f';
 	}
-	else if (flag_back  && (str != 'p')){
+	else if (flag_back){
 		str = 'b';
+	}
+	else if (flag_neutral){
+		str = 'n';
+	}
+	else {
+		but_flag = 0;
 	}
 	flagVmenos = 0;
 	flagVmais = 0;
@@ -476,7 +484,7 @@ void send(){
 	flag_foward = 0;
 	flag_neutral = 0;
 	//usart_put_string(USART1 ,str);
-	//but_flag = 1;
+	//
 }
 
 /************************************************************************/
@@ -601,7 +609,7 @@ void main(void)
   delay_init();
   SysTick_Config(sysclk_get_cpu_hz() / 1000); // 1 ms
   config_console();
-  //send();
+  send();
   
   #ifndef DEBUG_SERIAL
   usart_put_string(USART1, "Inicializando...\r\n");
@@ -657,7 +665,11 @@ void main(void)
 			  buffer[0] = str;
 			  buffer[1] = eof;
 			  buffer[2] = '\0';
-			  usart_send_command(USART0, buffer_rx, 1000, buffer, 1000);
+			  send();
+			  if (str != 'n'){
+				  usart_send_command(USART0, buffer_rx, 1000, buffer, 1000);
+			  }
+			  
 			  //while(!usart_is_tx_ready(USART0));//UART_COMM));
 			  //usart_put_string(USART1, eof);
 		  
